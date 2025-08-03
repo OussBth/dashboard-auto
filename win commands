@@ -1,3 +1,6 @@
 Get-AppxPackage -AllUsers -Name "*MicrosoftEdge*" | Remove-AppxPackage -AllUsers
 
 C:\Windows\System32\Sysprep\sysprep.exe /generalize /oobe /shutdown /unattend:C:\Windows\System32\Sysprep\unattend.xml
+
+
+Get-AppxProvisionedPackage -Online | Where-Object { $_.PackageName -like "*MicrosoftEdge*" } | Remove-AppxProvisionedPackage -Online
