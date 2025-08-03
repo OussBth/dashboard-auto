@@ -4,3 +4,23 @@ C:\Windows\System32\Sysprep\sysprep.exe /generalize /oobe /shutdown /unattend:C:
 
 
 Get-AppxProvisionedPackage -Online | Where-Object { $_.PackageName -like "*MicrosoftEdge*" } | Remove-AppxProvisionedPackage -Online
+
+# Liste des paquets essentiels à ne PAS supprimer
+$essential_packages = @(
+    "Microsoft.Windows.ShellExperienceHost",
+    "Microsoft.Windows.Cortana",
+    "Microsoft.Windows.BioEnrollment",
+    "Microsoft.Windows.ParentalControls",
+    "Microsoft.AccountsControl",
+    "Microsoft.AAD.BrokerPlugin",
+    "Microsoft.Windows.PeopleExperienceHost",
+    "Windows.CBSPreview",
+    "Microsoft.Windows.SecHealthUI",
+    "Microsoft.VCLibs.140.00"
+)
+
+# Boucle pour supprimer tous les autres paquets provisionnés
+Get-AppxProvisionedPackage -Online | Where-Object { $pkg = $_; -not ($essential_packages | Where-Object { $pkg.DisplayName -like "*$_*" }) } | ForEach-Object {
+    Write-Host "Suppression du paquet : $($_.DisplayName)" -ForegroundColor Yellow
+    Remove-AppxProvisionedPackage -Online -PackageName $_.PackageName
+}
