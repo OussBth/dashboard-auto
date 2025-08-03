@@ -1,0 +1,25 @@
+---
+- name: Étape 1 - Création de la machine sur Proxmox
+  hosts: localhost
+  connection: local
+  gather_facts: no
+
+  vars_files:
+    - vault.yml # Charger les secrets
+
+  roles:
+    - role: proxmox_deploy
+
+
+- name: Étape 2 - Configuration de la machine
+  hosts: new_servers
+  become: yes
+  become_method: "{{ 'runas' if os_type == 'windows' else 'sudo' }}"
+
+  roles:
+    - role: linux_webserver
+      when: server_role == 'web_server'
+    
+    # On appelle notre nouveau rôle générique pour Windows
+    - role: windows-services
+      when: os_type == 'windows'

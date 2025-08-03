@@ -1,0 +1,7 @@
+#SPDX-License-Identifier: MIT-0
+---
+- name: Mettre à jour les paquets et installer Nginx
+  apt:
+    name: nginx
+    state: present
+    update_cache: yes

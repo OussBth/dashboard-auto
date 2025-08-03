@@ -1,0 +1,12 @@
+# Connexion à l'API Proxmox (les secrets sont dans le vault)
+proxmox_api_host: "192.168.8.149"
+proxmox_api_user: "api_user@pam"
+proxmox_node: "pve"
+proxmox_validate_certs: false
+
+# Paramètres des templates
+lxc_template_name: "local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst"
+lxc_storage_pool: "vm-et-ct"
+
+windows_template_name: "win-tp" # Le nom de votre template Windows
+windows_storage_pool: "vm-et-ct"

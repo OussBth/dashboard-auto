@@ -1,0 +1,88 @@
+---
+- name: Créer et démarrer le conteneur LXC sur Proxmox
+  community.proxmox.proxmox:
+    api_host: "{{ proxmox_api_host }}"
+    api_user: "{{ proxmox_api_user }}"
+    api_token_id: "{{ proxmox_api_token_id }}"
+    api_token_secret: "{{ proxmox_api_token_secret }}"
+    validate_certs: "{{ proxmox_validate_certs }}"
+
+    node: "{{ proxmox_node }}"
+    vmid: "{{ vm_id }}"
+    hostname: "{{ vm_hostname }}"
+    state: present
+    
+    # Paramètre CORRECT pour créer un LXC à partir d'un template
+    ostemplate: "{{ lxc_template_name }}"
+    
+    # Paramètres additionnels
+    storage: "{{ lxc_storage_pool }}"
+    netif: '{"net0":"name=eth0,bridge=vmbr0,ip={{ vm_ip }},gw={{ vm_gateway }}"}'
+    pubkey: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+    password: "{{ lxc_root_password }}"
+  when: os_type == 'linux_lxc'
+
+- name: Créer la VM Windows depuis le template
+  community.proxmox.proxmox_kvm:
+    api_host: "{{ proxmox_api_host }}"
+    api_user: "{{ proxmox_api_user }}"
+    api_token_id: "{{ proxmox_api_token_id }}"
+    api_token_secret: "{{ proxmox_api_token_secret }}"
+    validate_certs: "{{ proxmox_validate_certs }}"
+
+    node: "{{ proxmox_node }}"
+    name: "{{ vm_hostname }}"
+    newid: "{{ vm_id }}"
+    
+    # Indique de cloner depuis notre template Windows
+    clone: "{{ windows_template_name }}"
+    timeout: 600 
+    # Configuration via Cloud-Init
+    agent: "enabled=1,type=virtio"
+    cipassword: "{{ windows_admin_password }}"
+    ciuser: "Administrator"
+    ipconfig:
+      ipconfig0: "ip={{ vm_ip }},gw={{ vm_gateway }}"
+  when: os_type == 'windows'
+
+- name: Démarrer la VM Windows
+  community.proxmox.proxmox_kvm:
+    api_host: "{{ proxmox_api_host }}"
+    api_user: "{{ proxmox_api_user }}"
+    api_token_id: "{{ proxmox_api_token_id }}"
+    api_token_secret: "{{ proxmox_api_token_secret }}"  
+    validate_certs: "{{ proxmox_validate_certs }}"
+    node: "{{ proxmox_node }}"
+    vmid: "{{ vm_id }}"
+    state: started
+  when: os_type == 'windows'
+
+
+- name: Démarrer le conteneur LXC
+  community.proxmox.proxmox:
+    api_host: "{{ proxmox_api_host }}"
+    api_user: "{{ proxmox_api_user }}"
+    api_token_id: "{{ proxmox_api_token_id }}"
+    api_token_secret: "{{ proxmox_api_token_secret }}"
+    validate_certs: "{{ proxmox_validate_certs }}"
+    node: "{{ proxmox_node }}"
+    vmid: "{{ vm_id }}"
+    state: started
+  when: os_type == 'linux_lxc'
+
+- name: Attendre que la machine soit joignable
+  wait_for:
+    host: "{{ vm_ip.split('/')[0] }}"
+    port: "{{ 3389 if os_type == 'windows' else 22 }}" 
+    delay: 20
+    timeout: 300
+  delegate_to: localhost
+
+- name: Ajouter le nouvel hôte à l'inventaire en mémoire
+  add_host:
+    name: "{{ vm_ip.split('/')[0] }}"
+    groups: new_servers
+    ansible_user: "{{ 'Administrator' if os_type == 'windows' else 'root' }}"
+    ansible_password: "{{ windows_admin_password if os_type == 'windows' else omit }}"
+    ansible_connection: "{{ 'winrm' if os_type == 'windows' else 'ssh' }}"
+    ansible_winrm_server_cert_validation: ignore
